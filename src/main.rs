@@ -1,6 +1,17 @@
+pub mod json;
+pub mod data;
 
 #[macro_use]
 extern crate glium;
+
+#[macro_use]
+extern crate tokio;
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+extern crate anyhow;
 
 use std::io::Cursor;
 
