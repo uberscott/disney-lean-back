@@ -2,18 +2,18 @@ use anyhow::anyhow;
 use anyhow::Error;
 use serde_json::Value;
 
-use crate::data::{Item, Set};
+use crate::data::{Item, Set, Data};
 
 lazy_static! {
     pub static ref HOME: &'static str = "https://cd-static.bamgrid.com/dp-117731241344/home.json";
 }
 
-pub async fn get_home() -> Result<Vec<Set>,Error> {
+pub async fn fetch() -> Result<Data,Error> {
 
     let response = reqwest::get(HOME.to_string() ).await?;
     let json: Value = serde_json::from_str( response.text().await?.as_str() )?;
 
-    let mut sets = vec![];
+    let mut data = Data{sets:vec![]};
     if let Value::Array(containers) = &json["data"]["StandardCollection"]["containers"] {
         for container in containers {
             if let Value::String(title) = &container["set"]["text"]["title"]["full"]["set"]["default"]["content"]
@@ -21,7 +21,7 @@ pub async fn get_home() -> Result<Vec<Set>,Error> {
                 if let Value::Array(items) = container["set"]["items"].clone(){
                     let mut set = Set::new(title.clone());
                     set.items = parse_items(items).await;
-                    sets.push(set);
+                    data.sets.push(set);
                 } else {
                     if let Value::String(ref_id) = container["set"]["refId"].clone() {
                         get_set(ref_id,title.clone()).await?;
@@ -33,7 +33,7 @@ pub async fn get_home() -> Result<Vec<Set>,Error> {
             }
         }
     }
-    Ok(sets)
+    Ok(data)
 }
 
 async fn get_set( ref_id: String, title: String ) -> Result<Set,Error> {
@@ -97,11 +97,11 @@ mod test {
     use anyhow::Error;
     use serde_json::Value;
 
-    use crate::json::{get_home, HOME};
+    use crate::json::{HOME, fetch};
 
     #[tokio::test]
     pub async fn test() -> Result<(),Error>{
-        get_home().await?;
+        fetch().await?;
         Ok(())
     }
 }

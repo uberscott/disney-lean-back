@@ -881,6 +881,7 @@ name = "lean-back"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "glium",
  "image",
  "lazy_static",

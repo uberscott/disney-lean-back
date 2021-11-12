@@ -2,6 +2,11 @@
 
 
 
+pub struct Data {
+    pub sets: Vec<Set>
+}
+
+
 pub struct Set {
     pub title: String,
     pub items: Vec<Item>

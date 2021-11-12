@@ -1,5 +1,6 @@
 pub mod json;
 pub mod data;
+pub mod cache;
 
 #[macro_use]
 extern crate glium;
@@ -13,13 +14,20 @@ extern crate lazy_static;
 #[macro_use]
 extern crate anyhow;
 
-use std::io::Cursor;
+use std::io::{Cursor};
+use std::sync::Arc;
+use bytes::Bytes;
+use anyhow::Error;
+use crate::data::Data;
+use crate::cache::cache_it_all;
+use std::collections::HashMap;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     #[allow(unused_imports)]
     use glium::{glutin, Surface};
 
-    let event_loop = glutin::event_loop::EventLoop::new();
+    let event_loop = glutin::event_loop::EventLoop::<Call>::with_user_event();
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new();
     let display = glium::Display::new(wb, cb, &event_loop).unwrap();
@@ -38,11 +46,6 @@ fn main() {
 
     implement_vertex!(Vertex, position, tex_coords);
 
-/*    let vertex1 = Vertex { position: [-0.5, -0.5], tex_coords: [0.0, 0.0] };
-    let vertex2 = Vertex { position: [ 0.0,  0.5], tex_coords: [0.0, 1.0] };
-    let vertex3 = Vertex { position: [ 0.5, -0.5], tex_coords: [1.0, 0.0] };
-
- */
     let vertex1 = Vertex { position: [-0.5, -0.5], tex_coords: [0.0, 0.0] };
     let vertex2 = Vertex { position: [ -0.5,  0.5], tex_coords: [0.0, 1.0] };
     let vertex3 = Vertex { position: [ 0.5, -0.5], tex_coords: [1.0, 0.0] };
@@ -82,8 +85,12 @@ fn main() {
 
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
+    let proxy = event_loop.create_proxy();
+    let mut texture_cache: HashMap<String,glium::texture::SrgbTexture2d> = HashMap::new();
+
     let mut t = -0.5;
     event_loop.run(move |event, _, control_flow| {
+
 
         match event {
             glutin::event::Event::WindowEvent { event, .. } => match event {
@@ -95,8 +102,49 @@ fn main() {
             },
             glutin::event::Event::NewEvents(cause) => match cause {
                 glutin::event::StartCause::ResumeTimeReached { .. } => (),
-                glutin::event::StartCause::Init => (),
+                glutin::event::StartCause::Init => {
+                    let proxy = proxy.clone();
+                    tokio::spawn( async move {
+println!("Init!");
+                        match json::fetch().await {
+                            Ok(data) => {
+                                // after a successful fetch, let's cache everything
+                              cache_it_all(data,proxy).await;
+                            }
+                            Err(err) => {
+                                eprintln!("bad news, the fetch didn't go so well: {}",err.to_string());
+                            }
+                        }
+                    });
+                },
                 _ => return,
+            },
+
+            glutin::event::Event::UserEvent(call) => match call {
+                Call::ToTexture{bytes,url} => {
+
+                    fn to_texture(bytes: Bytes, url: String, display: &glium::Display , texture_cache: &mut HashMap<String,glium::texture::SrgbTexture2d> ) -> Result<(),Error> {
+                        let image = image::load(Cursor::new(bytes ),
+                                                image::ImageFormat::Jpeg)?.to_rgba8();
+                        let image_dimensions = image.dimensions();
+                        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+                        let texture = glium::texture::SrgbTexture2d::new(display, image)?;
+                        texture_cache.insert( url, texture );
+                        Ok(())
+                    }
+
+                    match to_texture(bytes,url.clone(), &display, &mut texture_cache) {
+                        Ok(_) => {
+                            println!("ToTexture: {}", url);
+                        }
+                        Err(error) => {
+                            println!("ToTexture: {} ERROR: {}", url, error.to_string());
+                        }
+                    }
+               }
+                Call::TextureCachingBatchComplete => {
+                    println!("TextureCachingBatchComplete")
+                }
             },
             _ => return,
         }
@@ -129,4 +177,10 @@ fn main() {
                     &Default::default()).unwrap();
         target.finish().unwrap();
     });
+}
+
+
+pub enum Call {
+    ToTexture{ bytes: Bytes, url: String },
+    TextureCachingBatchComplete
 }
