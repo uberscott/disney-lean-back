@@ -258,38 +258,6 @@ println!("Init!");
                 };
 
                 let matrix = matrix* aspect_matrix;
-                /*
-                // look_at
-                let matrix = {
-                    let off = Vec2::from( (5.0,0.0) );
-                    let eye = Vec3::from((off.x,off.y,1.0));
-                    let at  = Vec3::from((off.x,off.y,0.0));
-                    let up  = Vec3::from((0.0,1.0,0.0));
-
-                    let zaxis = (at-eye).normalize();
-                    let xaxis = (zaxis.cross(up)).normalize();
-                    let yaxis = (xaxis.cross(zaxis));
-
-                    let zaxis = zaxis.neg();
-                    let eye = eye.neg();
-
-println!("eye: {}", eye.to_string() );
-println!("xaxis: {}", xaxis.to_string() );
-println!("yaxis: {}", yaxis.to_string() );
-println!("zaxis: {}", zaxis.to_string() );
-
-                    let mat = Mat4::from_cols_array_2d(&[
-                        [xaxis.x,xaxis.y,xaxis.z, xaxis.dot(eye)],
-                        [yaxis.x,yaxis.y,yaxis.z, yaxis.dot(eye)],
-                        [zaxis.x,zaxis.y,zaxis.z, zaxis.dot(eye)],
-                        [ 0.0, 0.0, 0.0, 1.0]] );
-
-                  //  let mat = mat*aspect_ratio;
-
-                    mat
-                };
-                 */
-
 
                 //let tile_aspect_fix = Affine3A::from_scale(Vec3::new(1.78, 1.0, 1.0));
                 let tile_aspect_fix = Affine3A::from_scale(Vec3::new(1.78, 1.0, 1.0));
@@ -389,7 +357,7 @@ impl Lerper {
             begin: Mat4::IDENTITY.clone(),
             end: Mat4::IDENTITY.clone(),
             start_time: Instant::now(),
-            duration: Duration::from_secs(1)
+            duration: Duration::from_millis(200 )
         }
     }
 
