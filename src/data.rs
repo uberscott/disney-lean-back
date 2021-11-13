@@ -21,6 +21,7 @@ impl Set {
     }
 }
 
+#[derive(Clone)]
 pub struct Item {
     pub image_url: String
 }
