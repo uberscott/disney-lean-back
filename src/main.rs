@@ -1,6 +1,7 @@
 pub mod json;
 pub mod data;
 pub mod cache;
+pub mod util;
 
 #[macro_use]
 extern crate glium;
@@ -35,6 +36,7 @@ use glium::glutin::event_loop::EventLoop;
 use glium::glutin::window::WindowBuilder;
 use dashmap::DashMap;
 use tokio::sync::mpsc;
+use crate::util::AsyncHashMap;
 
 #[tokio::main]
 async fn main() {
@@ -44,49 +46,14 @@ async fn main() {
     let texture_tile_renderer = TileRenderer::<TexturedVertex>::new(&display);
     let color_tile_renderer = TileRenderer::<Vertex>::new(&display);
 
-    let vertex1 = TexturedVertex { position: [0.0, 0.0], tex_coords: [0.0, 1.0] };
-    let vertex2 = TexturedVertex { position: [ 0.0,  1.0], tex_coords: [0.0, 0.0] };
-    let vertex3 = TexturedVertex { position: [ 1.0, 0.0], tex_coords: [1.0, 1.0] };
-    let vertex4 = TexturedVertex { position: [ 1.0, 1.0], tex_coords: [1.0, 0.0] };
-    let vertex5 = TexturedVertex { position: [ 0.0,  1.0], tex_coords: [0.0, 0.0] };
-    let vertex6 = TexturedVertex { position: [ 1.0, 0.0], tex_coords: [1.0, 1.0] };
-
-    let shape = vec![vertex1, vertex2, vertex3, vertex4, vertex5, vertex6 ];
-
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-
-    let vertex_shader_src = r#"
-        #version 140
-        in vec2 position;
-        in vec2 tex_coords;
-        out vec2 v_tex_coords;
-        uniform mat4 matrix;
-        void main() {
-            v_tex_coords = tex_coords;
-            gl_Position = matrix * vec4(position, 0.0, 1.0);
-        }
-    "#;
-
-    let fragment_shader_src = r#"
-        #version 140
-        in vec2 v_tex_coords;
-        out vec4 color;
-        uniform sampler2D tex;
-        void main() {
-            color = texture(tex, v_tex_coords);
-        }
-    "#;
-
-    let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
-
     let proxy = event_loop.create_proxy();
-//    let mut texture_cache: HashMap<String,glium::texture::SrgbTexture2d> = HashMap::new();
 let mut featured : Option<Tile> = Option::None;
 
     let mut vert_lerper: Lerper = Lerper::new();
 
     let context = Arc::new(Context::new(texture_tile_renderer, color_tile_renderer).await );
+
+    let mut texture_cache : HashMap<String,glium::texture::SrgbTexture2d> = HashMap::new();
 
     event_loop.run(move |event, _, control_flow| {
 
@@ -152,17 +119,19 @@ println!("Init!");
             glium::glutin::event::Event::UserEvent(call) => match call {
                 Call::ToTexture{bytes,url} => {
 
-                    fn to_texture(bytes: Bytes, url: String, display: &glium::Display , context: Arc<Context>) -> Result<(),Error> {
+                    fn to_texture(bytes: Bytes, url: String, display: &glium::Display , texture_cache: &mut HashMap<String,glium::texture::SrgbTexture2d>) -> Result<(),Error> {
                         let image = image::load(Cursor::new(bytes ),
                                                 image::ImageFormat::Jpeg)?.to_rgba8();
                         let image_dimensions = image.dimensions();
                         let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
                         let texture = glium::texture::SrgbTexture2d::new(display, image)?;
-                        context.texture_cache.insert( url, texture );
+                        {
+                            texture_cache.insert(url, texture);
+                        }
                         Ok(())
                     }
 
-                    match to_texture(bytes,url.clone(), &display, context.clone() ) {
+                    match to_texture(bytes,url.clone(), &display, & mut texture_cache ) {
                         Ok(_) => {
                             if featured.is_none() {
                                 let item = Item{image_url:url.clone()};
@@ -172,9 +141,11 @@ println!("Init!");
                                 featured = Option::Some(tile);
                             }
                             println!("ToTexture: {}", url);
+                            return;
                         }
                         Err(error) => {
                             println!("ToTexture: {} ERROR: {}", url, error.to_string());
+                            return;
                         }
                     }
                }
@@ -221,28 +192,7 @@ println!("Init!");
                 let matrix = matrix*tile_aspect_fix ;
                 let matrix = matrix*vert_lerper.lerp();
 
-                // we remove the texture, use it then insert it back in the texture_cache...
-                // I wrestled with grabbing a reference, however, gave up the battle with the borrow checker
-                // and determined to instead to utilize this 'hack' ... at least for now
-                let (_,texture): (_,glium::texture::SrgbTexture2d)  = context.texture_cache.remove(&tile.item.image_url ).unwrap();
-
-                let uniforms = uniform! {
-            matrix: [
-
-                [ matrix.x_axis.x , matrix.x_axis.y, matrix.x_axis.z, matrix.x_axis.w],
-                [ matrix.y_axis.x , matrix.y_axis.y, matrix.y_axis.z, matrix.y_axis.w],
-                [ matrix.z_axis.x , matrix.z_axis.y, matrix.z_axis.z, matrix.z_axis.w],
-                [ matrix.w_axis.x , matrix.w_axis.y, matrix.w_axis.z, matrix.w_axis.w],
-            ],
-            tex: &texture,
-        };
-
-
-                target.draw(&vertex_buffer, &indices, &program, &uniforms,
-                            &Default::default()).unwrap();
-
-                // return the texture
-                context.texture_cache.insert(tile.item.image_url.clone(), texture );
+                tile.draw( &mut target, matrix, context.clone(), & mut texture_cache );
             }
         };
 
@@ -275,13 +225,20 @@ pub struct Tile {
 }
 
 impl Tile {
-   pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context> ) {
+   pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
 
-       match context.texture_cache.get(&self.item.image_url ) {
+       match texture_cache.get(&self.item.image_url.clone() ) {
            Some(_) => {
-
+               // we remove the texture, use it then insert it back in the texture_cache...
+               // I wrestled with grabbing a reference, however, gave up the battle with the borrow checker
+               // and determined to instead to utilize this 'hack' ... at least for now
+               let texture = texture_cache.remove(&self.item.image_url ).unwrap();
+               context.texture_tile_renderer.draw( frame, matrix, &texture );
+               texture_cache.insert(self.item.image_url.clone(), texture );
            }
-           None => {}
+           None => {
+               context.color_tile_renderer.draw( frame, matrix, Vec4::from( ( 1.0,1.0,1.0,0.75)));
+           }
        }
         /*        target.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms,
                             &Default::default()).unwrap();
@@ -509,7 +466,6 @@ impl TileRenderer<TexturedVertex> {
 
 pub struct Context {
     pub data: Arc<Data>,
-    pub texture_cache: DashMap<String,glium::texture::SrgbTexture2d>,
     pub texture_tile_renderer: TileRenderer<TexturedVertex>,
     pub color_tile_renderer: TileRenderer<Vertex>,
 }
@@ -518,7 +474,6 @@ impl Context {
     pub async fn new(texture_tile_renderer: TileRenderer<TexturedVertex>,color_tile_renderer: TileRenderer<Vertex>,)->Self {
         Self {
             data: Arc::new(Data::new()),
-            texture_cache: DashMap::new(),
             texture_tile_renderer,
             color_tile_renderer
         }
