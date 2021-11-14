@@ -74,28 +74,11 @@ async fn main() {
                                     return;
                                 }
                                 VirtualKeyCode::Up=> {
-/*                                    if grid.vert_offset.is_active() {
-                                        return;
-                                    }
-
-                                    let nudge_up= Affine3A::from_translation(Vec3::new(0.0, vert_nudge, 0.0));
-                                    grid.vert_offset.apply(nudge_up);
-
- */
                                     grid.up();
                                 }
                                 VirtualKeyCode::Down=> {
-                                    /*
-                                    if grid.vert_offset.is_active() {
-                                        return;
-                                    }
-
-                                    let nudge_down= Affine3A::from_translation(Vec3::new(0.0, -vert_nudge, 0.0));
-                                    grid.vert_offset.apply(nudge_down);
-                                     */
                                     grid.down();
                                 }
-
                                 _ => {
                                     return;
                                 }
@@ -161,8 +144,8 @@ println!("Init!");
 
 
         let mut frame = display.draw();
-        frame.clear_color(
-        0.129, 0.588, 0.953, 1.0 );
+        frame.clear_color_and_depth(
+            (0.129, 0.588, 0.953, 1.0), 1.0 );
 
 
         let (width, height) = frame.get_dimensions();
@@ -236,15 +219,14 @@ impl Grid {
 
     fn add(&mut self, set: Set ) {
                 let tiles : Vec<Tile> = set.items.iter().map( |item| {
-                    Tile{
-                        item: item.clone()
-                    }
+                    Tile::new(item.clone())
                 } ).collect();
                 let row = Row {
                     set,
                     tiles,
                 };
         self.rows.push(row);
+        self.select();
     }
 
     pub fn draw(&self, frame: &mut Frame, projection: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
@@ -261,8 +243,10 @@ impl Grid {
             return;
         }
         if self.selection.row > 0 {
+           self.unselect();
            self.selection.up();
            self.vert_offset.next( self.selection.row_offset() );
+           self.select();
        }
     }
 
@@ -270,9 +254,42 @@ impl Grid {
         if self.vert_offset.is_active() {
             return;
         }
-        if self.selection.row < self.rows.len() {
+        if self.selection.row < self.rows.len()-1 {
+            self.unselect();
             self.selection.down();
             self.vert_offset.next( self.selection.row_offset() );
+            self.select();
+        }
+    }
+
+    fn unselect(&mut self) {
+        match self.find_selection() {
+            None => {}
+            Some(tile) => {
+                tile.unselect();
+            }
+        }
+    }
+
+    fn select(&mut self) {
+        match self.find_selection() {
+            None => {}
+            Some(tile) => {
+                tile.select();
+            }
+        }
+    }
+
+
+    fn find_selection(&mut self) -> Option<&mut Tile> {
+        let row = self.rows.get_mut(self.selection.row);
+        match row {
+            None => {
+                return None;
+            }
+            Some(row) => {
+               row.tiles.get_mut(self.selection.col)
+            }
         }
     }
 
@@ -307,7 +324,7 @@ fn init_display( event_loop: &EventLoop<Call> ) -> glium::Display {
     let wb = wb.with_movable_by_window_background(true);
     let wb = wb.with_inner_size(Size::Physical(PhysicalSize { width: 1920, height: 1080}));
     let wb = wb.with_title("A Dystopian Streaming Experience from an Alternate Reality");
-    let cb = glium::glutin::ContextBuilder::new();
+    let cb = glium::glutin::ContextBuilder::new().with_depth_buffer(24);
     glium::Display::new(wb, cb, event_loop).unwrap()
 }
 
@@ -321,16 +338,40 @@ pub enum Call {
 }
 
 pub struct Tile {
-  pub item: Item
+  pub item: Item,
+  pub selected: Lerper
 }
 
+
+
 impl Tile {
-   pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
+   pub fn new( item: Item ) -> Self {
+       Self {
+           item,
+           selected: Lerper::new()
+       }
+   }
+
+   pub fn select(&mut self) {
+       let mut mat = Mat4::from_scale(Vec3::new(1.25,1.25, 1.0 ));
+       let lift = Mat4::from_translation(Vec3::new(0.0,0.0,5.0));
+       mat = mat*lift;
+       self.selected.next(mat);
+   }
+
+    pub fn unselect(&mut self) {
+        self.selected.next(Mat4::IDENTITY.clone() );
+    }
+
+    pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
 
        let margin = Affine3A::from_scale(Vec3::new(0.9, 0.9, 1.0 ));
        let matrix = matrix* margin;
        let offset = Affine3A::from_translation(Vec3::new( 0.05, 0.05, 0.0 ));
        let matrix = matrix* offset;
+
+       let matrix = matrix*self.selected.lerp();
+
 
        match texture_cache.get(&self.item.image_url.clone() ) {
            Some(_) => {
@@ -498,7 +539,17 @@ impl TileRenderer<Vertex> {
             ],
             color_in: [color.x,color.y,color.z,color.w]
         };
-        frame.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &Default::default()).unwrap();
+
+        let params = glium::DrawParameters {
+            depth: glium::Depth {
+                test: glium::draw_parameters::DepthTest::IfLess,
+                write: true,
+                .. Default::default()
+            },
+            .. Default::default()
+        };
+
+        frame.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &params).unwrap();
     }
 }
 
@@ -560,7 +611,15 @@ impl TileRenderer<TexturedVertex> {
             ],
             tex: texture,
         };
-        frame.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &Default::default()).unwrap();
+        let params = glium::DrawParameters {
+            depth: glium::Depth {
+                test: glium::draw_parameters::DepthTest::IfLess,
+                write: true,
+                .. Default::default()
+            },
+            .. Default::default()
+        };
+        frame.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &params).unwrap();
     }
 }
 
