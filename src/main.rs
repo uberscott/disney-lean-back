@@ -79,6 +79,12 @@ async fn main() {
                                 VirtualKeyCode::Down=> {
                                     grid.down();
                                 }
+                                VirtualKeyCode::Left=> {
+                                    grid.left();
+                                }
+                                VirtualKeyCode::Right=> {
+                                    grid.right();
+                                }
                                 _ => {
                                     return;
                                 }
@@ -184,9 +190,6 @@ impl Selection {
             col: 0
         }
     }
-    pub fn row_offset(&self) -> Mat4 {
-        Mat4::from_translation(Vec3::new(0.0, -(self.row as f32*1.0), 0.0 ))
-    }
 
     pub fn col_offset(&self) -> Mat4 {
         Mat4::from_translation(Vec3::new(0.0, self.col as f32*1.0, 0.0 ))
@@ -204,7 +207,7 @@ impl Selection {
 pub struct Grid {
     pub vert_offset: Lerper,
     pub rows: Vec<Row>,
-    pub selection: Selection
+    pub selection: usize
 }
 
 impl Grid {
@@ -213,7 +216,7 @@ impl Grid {
         Self {
             vert_offset: Lerper::new(),
             rows: vec![],
-            selection: Selection::new()
+            selection: 0
         }
     }
 
@@ -221,10 +224,7 @@ impl Grid {
                 let tiles : Vec<Tile> = set.items.iter().map( |item| {
                     Tile::new(item.clone())
                 } ).collect();
-                let row = Row {
-                    set,
-                    tiles,
-                };
+                let row = Row::new( set, tiles );
         self.rows.push(row);
         self.select();
     }
@@ -242,10 +242,10 @@ impl Grid {
         if self.vert_offset.is_active() {
             return;
         }
-        if self.selection.row > 0 {
+        if self.selection > 0 {
            self.unselect();
-           self.selection.up();
-           self.vert_offset.next( self.selection.row_offset() );
+           self.selection = self.selection.clone()-1;
+           self.vert_offset.next( self.offset() );
            self.select();
        }
     }
@@ -254,12 +254,37 @@ impl Grid {
         if self.vert_offset.is_active() {
             return;
         }
-        if self.selection.row < self.rows.len()-1 {
+        if self.selection < self.rows.len()-1 {
             self.unselect();
-            self.selection.down();
-            self.vert_offset.next( self.selection.row_offset() );
+            self.selection = self.selection.clone()+1;
+            self.vert_offset.next( self.offset() );
             self.select();
         }
+    }
+
+    pub fn left(&mut self) {
+        let row = self.rows.get_mut(self.selection);
+        match row {
+            None => {}
+            Some(row) => {
+                row.left();
+            }
+        }
+    }
+
+    pub fn right(&mut self) {
+        let row = self.rows.get_mut(self.selection);
+        match row {
+            None => {}
+            Some(row) => {
+                row.right();
+            }
+        }
+    }
+
+
+    pub fn offset(&self) -> Mat4 {
+        Mat4::from_translation(Vec3::new(0.0, -(self.selection as f32*1.0), 0.0 ))
     }
 
     fn unselect(&mut self) {
@@ -282,13 +307,10 @@ impl Grid {
 
 
     fn find_selection(&mut self) -> Option<&mut Tile> {
-        let row = self.rows.get_mut(self.selection.row);
-        match row {
-            None => {
-                return None;
-            }
+        match self.rows.get_mut(self.selection) {
+            None => None,
             Some(row) => {
-               row.tiles.get_mut(self.selection.col)
+                row.tiles.get_mut(row.selection)
             }
         }
     }
@@ -298,16 +320,30 @@ impl Grid {
 pub struct Row {
   pub set: Set,
   pub tiles: Vec<Tile>,
+  pub selection: usize,
+  pub offset: Lerper,
 }
 
 impl Row {
+    pub fn new(set: Set, tiles: Vec<Tile>) -> Self {
+        Self {
+            set,
+            tiles,
+            selection: 0,
+            offset: Lerper::new()
+        }
+    }
+
     pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
 
         let mut matrix = matrix;
 
+
         // Yippie!  A Hard coded fix aspect value of 1.78.... I hope this never comes back to bite me!
         let tile_aspect_fix = Affine3A::from_scale(Vec3::new(1.78, 1.0, 1.0));
         matrix = matrix*tile_aspect_fix ;
+
+        matrix = matrix * self.offset.lerp();
 
         let next= Affine3A::from_translation(Vec3::new(1.0, 0.0, 0.0 ));
         for tile in &self.tiles {
@@ -315,6 +351,64 @@ impl Row {
             matrix = matrix*next;
         }
     }
+
+    pub fn left( &mut self ) {
+
+        if self.offset.is_active() {
+            return;
+        }
+
+        if self.selection == 0 {
+            return;
+        }
+        self.unselect();
+        self.selection = self.selection.clone()-1;
+        self.offset.next(self.calc_offset());
+        self.select();
+    }
+
+    pub fn right( &mut self ) {
+
+        if self.offset.is_active() {
+            return;
+        }
+
+        if self.selection == self.tiles.len()-1 {
+            return;
+        }
+        self.unselect();
+        self.selection = self.selection.clone()+1;
+        self.offset.next(self.calc_offset());
+        self.select();
+    }
+
+    fn unselect(&mut self) {
+        match self.find_selection() {
+            None => {}
+            Some(tile) => {
+                tile.unselect();
+            }
+        }
+    }
+
+    fn select(&mut self) {
+        match self.find_selection() {
+            None => {}
+            Some(tile) => {
+                tile.select();
+            }
+        }
+    }
+
+
+    fn find_selection(&mut self) -> Option<&mut Tile> {
+        self.tiles.get_mut(self.selection)
+    }
+
+    fn calc_offset(&self) -> Mat4 {
+        Mat4::from_translation(Vec3::new(-(self.selection as f32*1.0), 0.0, 0.0 ))
+    }
+
 }
 
 
@@ -345,6 +439,8 @@ pub struct Tile {
 
 
 impl Tile {
+   const MARGIN: f32 = 0.15;
+
    pub fn new( item: Item ) -> Self {
        Self {
            item,
@@ -353,9 +449,9 @@ impl Tile {
    }
 
    pub fn select(&mut self) {
-       let mut mat = Mat4::from_scale(Vec3::new(1.25,1.25, 1.0 ));
-       let lift = Mat4::from_translation(Vec3::new(0.0,0.0,5.0));
-       mat = mat*lift;
+       let mut mat = Mat4::from_scale(Vec3::new(1.0+Self::MARGIN,1.0+Self::MARGIN, 1.0 ));
+       let lift = Mat4::from_translation(Vec3::new(-Self::MARGIN/4.0,-Self::MARGIN/4.0,5.0));
+       mat = lift*mat;
        self.selected.next(mat);
    }
 
@@ -365,9 +461,9 @@ impl Tile {
 
     pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
 
-       let margin = Affine3A::from_scale(Vec3::new(0.9, 0.9, 1.0 ));
+       let margin = Affine3A::from_scale(Vec3::new(1.0-Self::MARGIN, 1.0-Self::MARGIN, 1.0 ));
        let matrix = matrix* margin;
-       let offset = Affine3A::from_translation(Vec3::new( 0.05, 0.05, 0.0 ));
+       let offset = Affine3A::from_translation(Vec3::new( Self::MARGIN/2.0, Self::MARGIN/2.0, 0.0 ));
        let matrix = matrix* offset;
 
        let matrix = matrix*self.selected.lerp();
