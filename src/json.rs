@@ -12,9 +12,10 @@ lazy_static! {
     pub static ref HOME: &'static str = "https://cd-static.bamgrid.com/dp-117731241344/home.json";
 }
 
-pub async fn fetch( data:Arc<Data>, event_loop_proxy: EventLoopProxy<Call> ) -> Result<(),Error> {
+pub async fn fetch( event_loop_proxy: EventLoopProxy<Call> ) -> Result<(),Error> {
 
-    let cacher = create_cacher(event_loop_proxy).await;
+    let cache_proxy = event_loop_proxy.clone();
+    let cacher = create_cacher(cache_proxy).await;
     let response = reqwest::get(HOME.to_string() ).await?;
     let json: Value = serde_json::from_str( response.text().await?.as_str() )?;
 
@@ -25,12 +26,12 @@ pub async fn fetch( data:Arc<Data>, event_loop_proxy: EventLoopProxy<Call> ) -> 
                 if let Value::Array(items) = container["set"]["items"].clone(){
                     let mut set = Set::new(title.clone());
                     set.items = parse_items(items).await;
-                    data.sets.insert(set.clone());
+                    event_loop_proxy.send_event(Call::AddSet(set.clone()));
                     cache_set(set,cacher.clone() );
                 } else {
                     if let Value::String(ref_id) = container["set"]["refId"].clone() {
                         let set = get_set(ref_id,title.clone()).await?;
-                        data.sets.insert(set.clone());
+                        event_loop_proxy.send_event(Call::AddSet(set.clone()));
                         cache_set(set,cacher.clone());
                     }
                     else {

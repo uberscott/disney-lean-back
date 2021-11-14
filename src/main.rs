@@ -1,7 +1,6 @@
 pub mod json;
 pub mod data;
 pub mod cache;
-pub mod util;
 
 #[macro_use]
 extern crate glium;
@@ -19,7 +18,7 @@ use std::io::{Cursor};
 use std::sync::Arc;
 use bytes::Bytes;
 use anyhow::Error;
-use crate::data::{Data, Item};
+use crate::data::{Data, Item, Set};
 use crate::cache::{cache_set, create_cacher};
 use std::collections::HashMap;
 use glam::{Mat4, Affine2, Vec2, Vec3, Affine3A, Vec4};
@@ -36,7 +35,7 @@ use glium::glutin::event_loop::EventLoop;
 use glium::glutin::window::WindowBuilder;
 use dashmap::DashMap;
 use tokio::sync::mpsc;
-use crate::util::AsyncHashMap;
+use image::imageops::tile;
 
 #[tokio::main]
 async fn main() {
@@ -47,16 +46,15 @@ async fn main() {
     let color_tile_renderer = TileRenderer::<Vertex>::new(&display);
 
     let proxy = event_loop.create_proxy();
-let mut featured : Option<Tile> = Option::None;
 
     let mut vert_lerper: Lerper = Lerper::new();
 
     let context = Arc::new(Context::new(texture_tile_renderer, color_tile_renderer).await );
+    let mut grid = Grid::new();
 
     let mut texture_cache : HashMap<String,glium::texture::SrgbTexture2d> = HashMap::new();
 
     event_loop.run(move |event, _, control_flow| {
-
 
         match event {
             glium::glutin::event::Event::WindowEvent { event, .. } => match event {
@@ -76,20 +74,26 @@ let mut featured : Option<Tile> = Option::None;
                                     return;
                                 }
                                 VirtualKeyCode::Up=> {
-                                    if vert_lerper.is_active() {
+/*                                    if grid.vert_offset.is_active() {
                                         return;
                                     }
 
                                     let nudge_up= Affine3A::from_translation(Vec3::new(0.0, vert_nudge, 0.0));
-                                    vert_lerper.apply(nudge_up);
+                                    grid.vert_offset.apply(nudge_up);
+
+ */
+                                    grid.up();
                                 }
                                 VirtualKeyCode::Down=> {
-                                    if vert_lerper.is_active() {
+                                    /*
+                                    if grid.vert_offset.is_active() {
                                         return;
                                     }
 
                                     let nudge_down= Affine3A::from_translation(Vec3::new(0.0, -vert_nudge, 0.0));
-                                    vert_lerper.apply(nudge_down);
+                                    grid.vert_offset.apply(nudge_down);
+                                     */
+                                    grid.down();
                                 }
 
                                 _ => {
@@ -106,11 +110,10 @@ let mut featured : Option<Tile> = Option::None;
             glium::glutin::event::Event::NewEvents(cause) => match cause {
                 glium::glutin::event::StartCause::ResumeTimeReached { .. } => (),
                 glium::glutin::event::StartCause::Init => {
-                    let data = context.data.clone();
                     let proxy = proxy.clone();
                     tokio::spawn( async move {
 println!("Init!");
-                        json::fetch(data,proxy).await.unwrap_or_default();
+                        json::fetch(proxy).await.unwrap_or_default();
                     });
                 },
                 _ => return,
@@ -133,13 +136,6 @@ println!("Init!");
 
                     match to_texture(bytes,url.clone(), &display, & mut texture_cache ) {
                         Ok(_) => {
-                            if featured.is_none() {
-                                let item = Item{image_url:url.clone()};
-                                let tile = Tile {
-                                    item
-                                };
-                                featured = Option::Some(tile);
-                            }
                             println!("ToTexture: {}", url);
                             return;
                         }
@@ -152,6 +148,9 @@ println!("Init!");
                 Call::TextureCachingBatchComplete => {
                     println!("TextureCachingBatchComplete")
                 }
+                Call::AddSet(set) => {
+                    grid.add(set);
+                }
             },
             _ => return,
         }
@@ -161,44 +160,144 @@ println!("Init!");
         *control_flow = glium::glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 
 
-        let mut target = display.draw();
-        target.clear_color(
+        let mut frame = display.draw();
+        frame.clear_color(
         0.129, 0.588, 0.953, 1.0 );
 
-        match &featured {
-            None => {}
-            Some(tile ) => {
-                vert_lerper.lerp();
 
-                let (width, height) = target.get_dimensions();
-                let aspect_ratio = height as f32 / width as f32;
+        let (width, height) = frame.get_dimensions();
+        let aspect_ratio = height as f32 / width as f32;
 
-                let mut aspect_matrix = Mat4::from_cols_array_2d(&[
-                    [aspect_ratio, 0.0, 0.0, 0.0],
-                    [0.0, 1.0, 0.0, 0.0],
-                    [0.0, 0.0, 1.0, 0.0],
-                    [ 0.0 , 0.0, 0.0, 1.0],]);
+        let mut aspect_matrix = Mat4::from_cols_array_2d(&[
+            [aspect_ratio, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [ 0.0 , 0.0, 0.0, 1.0],]);
 
-                let matrix = {
-                    let size = 5.0;
-                    let matrix:Matrix4<f32> = Matrix4::new_orthographic( 0.0,size*aspect_ratio, size, 0.0, -10.0, 10.0);
-                    Mat4::from_cols_array_2d(&matrix.data.0 )
-                };
-
-                let matrix = matrix* aspect_matrix;
-
-                // Yippie!  A Hard coded fix aspect value of 1.78.... I hope this never comes back to bite me!
-                let tile_aspect_fix = Affine3A::from_scale(Vec3::new(1.78, 1.0, 1.0));
-                let matrix = matrix*tile_aspect_fix ;
-                let matrix = matrix*vert_lerper.lerp();
-
-                tile.draw( &mut target, matrix, context.clone(), & mut texture_cache );
-            }
+        let matrix = {
+            let size = 5.0;
+            let matrix:Matrix4<f32> = Matrix4::new_orthographic( 0.0,size, size, 0.0, -10.0, 10.0);
+            Mat4::from_cols_array_2d(&matrix.data.0 )
         };
 
 
-        target.finish().unwrap();
+        let ortho = matrix* aspect_matrix;
+        grid.draw( &mut frame, ortho, context.clone(), & mut texture_cache  );
+
+
+        frame.finish().unwrap();
     });
+}
+
+pub struct Selection {
+    pub row: usize,
+    pub col: usize
+}
+
+impl Selection {
+    pub fn new()->Self {
+        Self{
+            row: 0,
+            col: 0
+        }
+    }
+    pub fn row_offset(&self) -> Mat4 {
+        Mat4::from_translation(Vec3::new(0.0, -(self.row as f32*1.0), 0.0 ))
+    }
+
+    pub fn col_offset(&self) -> Mat4 {
+        Mat4::from_translation(Vec3::new(0.0, self.col as f32*1.0, 0.0 ))
+    }
+
+    pub fn up(&mut self) {
+        self.row = self.row - 1;
+    }
+
+    pub fn down(&mut self) {
+        self.row = self.row + 1;
+    }
+}
+
+pub struct Grid {
+    pub vert_offset: Lerper,
+    pub rows: Vec<Row>,
+    pub selection: Selection
+}
+
+impl Grid {
+
+    fn new() -> Self {
+        Self {
+            vert_offset: Lerper::new(),
+            rows: vec![],
+            selection: Selection::new()
+        }
+    }
+
+    fn add(&mut self, set: Set ) {
+                let tiles : Vec<Tile> = set.items.iter().map( |item| {
+                    Tile{
+                        item: item.clone()
+                    }
+                } ).collect();
+                let row = Row {
+                    set,
+                    tiles,
+                };
+        self.rows.push(row);
+    }
+
+    pub fn draw(&self, frame: &mut Frame, projection: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
+        let mut matrix = projection * self.vert_offset.lerp();
+        for row in &self.rows {
+            row.draw( frame, matrix, context.clone(), texture_cache );
+            let next= Affine3A::from_translation(Vec3::new(0.0, 1.0, 0.0 ));
+            matrix = matrix * next;
+        }
+    }
+
+    pub fn up(&mut self) {
+        if self.vert_offset.is_active() {
+            return;
+        }
+        if self.selection.row > 0 {
+           self.selection.up();
+           self.vert_offset.next( self.selection.row_offset() );
+       }
+    }
+
+    pub fn down(&mut self) {
+        if self.vert_offset.is_active() {
+            return;
+        }
+        if self.selection.row < self.rows.len() {
+            self.selection.down();
+            self.vert_offset.next( self.selection.row_offset() );
+        }
+    }
+
+}
+
+pub struct Row {
+  pub set: Set,
+  pub tiles: Vec<Tile>,
+}
+
+impl Row {
+    pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
+
+        let mut matrix = matrix;
+
+        // Yippie!  A Hard coded fix aspect value of 1.78.... I hope this never comes back to bite me!
+        let tile_aspect_fix = Affine3A::from_scale(Vec3::new(1.78, 1.0, 1.0));
+        matrix = matrix*tile_aspect_fix ;
+
+        let next= Affine3A::from_translation(Vec3::new(1.0, 0.0, 0.0 ));
+        for tile in &self.tiles {
+            tile.draw(frame,matrix,context.clone(),texture_cache);
+            matrix = matrix*next;
+        }
+    }
 }
 
 
@@ -206,7 +305,7 @@ fn init_display( event_loop: &EventLoop<Call> ) -> glium::Display {
     let wb = WindowBuilder::new();
     let wb = wb.with_resizable(true);
     let wb = wb.with_movable_by_window_background(true);
-    let wb = wb.with_inner_size(Size::Physical(PhysicalSize { width: 2048, height: 1600 }));
+    let wb = wb.with_inner_size(Size::Physical(PhysicalSize { width: 1920, height: 1080}));
     let wb = wb.with_title("A Dystopian Streaming Experience from an Alternate Reality");
     let cb = glium::glutin::ContextBuilder::new();
     glium::Display::new(wb, cb, event_loop).unwrap()
@@ -217,7 +316,8 @@ fn init_display( event_loop: &EventLoop<Call> ) -> glium::Display {
 
 pub enum Call {
     ToTexture{ bytes: Bytes, url: String },
-    TextureCachingBatchComplete
+    TextureCachingBatchComplete,
+    AddSet(Set)
 }
 
 pub struct Tile {
@@ -226,6 +326,11 @@ pub struct Tile {
 
 impl Tile {
    pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context>, texture_cache: & mut HashMap<String,glium::texture::SrgbTexture2d> ) {
+
+       let margin = Affine3A::from_scale(Vec3::new(0.9, 0.9, 1.0 ));
+       let matrix = matrix* margin;
+       let offset = Affine3A::from_translation(Vec3::new( 0.05, 0.05, 0.0 ));
+       let matrix = matrix* offset;
 
        match texture_cache.get(&self.item.image_url.clone() ) {
            Some(_) => {
@@ -294,7 +399,6 @@ impl Lerper {
         self.start_time = Instant::now();
     }
 
-
     pub fn set( &mut self, begin: Mat4, end: Mat4 ) {
         self.begin = begin;
         self.end = end;
@@ -306,7 +410,7 @@ impl Lerper {
         self.end = Mat4::IDENTITY.clone();
     }
 
-    pub fn lerp(&mut self) -> Mat4 {
+    pub fn lerp(&self) -> Mat4 {
         let elapsed = self.start_time.elapsed();
         let v= (elapsed.as_millis() as f32/self.duration.as_millis() as f32) as f32;
         lerp( &self.begin, &self.end, v)
@@ -333,12 +437,8 @@ pub struct Vertex{
     position: [f32; 2]
 }
 
-
 implement_vertex!(TexturedVertex, position, tex_coords);
 implement_vertex!(Vertex, position);
-
-
-
 
 pub struct TileRenderer<T:Copy> {
    pub vertex_buffer: glium::VertexBuffer<T>,
@@ -465,7 +565,6 @@ impl TileRenderer<TexturedVertex> {
 }
 
 pub struct Context {
-    pub data: Arc<Data>,
     pub texture_tile_renderer: TileRenderer<TexturedVertex>,
     pub color_tile_renderer: TileRenderer<Vertex>,
 }
@@ -473,7 +572,6 @@ pub struct Context {
 impl Context {
     pub async fn new(texture_tile_renderer: TileRenderer<TexturedVertex>,color_tile_renderer: TileRenderer<Vertex>,)->Self {
         Self {
-            data: Arc::new(Data::new()),
             texture_tile_renderer,
             color_tile_renderer
         }
