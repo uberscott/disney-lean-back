@@ -29,7 +29,7 @@ use glium::backend::glutin::glutin::dpi::{Size, PhysicalSize};
 use std::ops::Neg;
 use nalgebra_glm::make_mat4x4;
 use nalgebra::{Matrix4, MatrixSlice4};
-use glium::{Frame, Surface};
+use glium::{Frame, Surface, Display};
 use glium::backend::glutin::glutin::event_loop::EventLoopProxy;
 use glium::glutin::event_loop::EventLoop;
 use glium::glutin::window::WindowBuilder;
@@ -41,6 +41,8 @@ async fn main() {
 
     let event_loop = glium::glutin::event_loop::EventLoop::<Call>::with_user_event();
     let display = init_display(&event_loop);
+    let texture_tile_renderer = TileRenderer::<TexturedVertex>::new(&display);
+    let color_tile_renderer = TileRenderer::<Vertex>::new(&display);
 
     let vertex1 = TexturedVertex { position: [0.0, 0.0], tex_coords: [0.0, 1.0] };
     let vertex2 = TexturedVertex { position: [ 0.0,  1.0], tex_coords: [0.0, 0.0] };
@@ -84,7 +86,7 @@ let mut featured : Option<Tile> = Option::None;
 
     let mut vert_lerper: Lerper = Lerper::new();
 
-    let context = Arc::new(Context::new().await );
+    let context = Arc::new(Context::new(texture_tile_renderer, color_tile_renderer).await );
 
     event_loop.run(move |event, _, control_flow| {
 
@@ -196,8 +198,6 @@ println!("Init!");
             None => {}
             Some(tile ) => {
                 vert_lerper.lerp();
-                //let texture :&glium::texture::SrgbTexture2d = context.texture_cache.get(&tile.item.image_url ).unwrap();
-                let (_,texture): (_,glium::texture::SrgbTexture2d)  = context.texture_cache.remove(&tile.item.image_url ).unwrap();
 
                 let (width, height) = target.get_dimensions();
                 let aspect_ratio = height as f32 / width as f32;
@@ -220,6 +220,11 @@ println!("Init!");
                 let tile_aspect_fix = Affine3A::from_scale(Vec3::new(1.78, 1.0, 1.0));
                 let matrix = matrix*tile_aspect_fix ;
                 let matrix = matrix*vert_lerper.lerp();
+
+                // we remove the texture, use it then insert it back in the texture_cache...
+                // I wrestled with grabbing a reference, however, gave up the battle with the borrow checker
+                // and determined to instead to utilize this 'hack' ... at least for now
+                let (_,texture): (_,glium::texture::SrgbTexture2d)  = context.texture_cache.remove(&tile.item.image_url ).unwrap();
 
                 let uniforms = uniform! {
             matrix: [
@@ -270,7 +275,20 @@ pub struct Tile {
 }
 
 impl Tile {
+   pub fn draw(&self, frame: &mut Frame, matrix: Mat4, context: Arc<Context> ) {
 
+       match context.texture_cache.get(&self.item.image_url ) {
+           Some(_) => {
+
+           }
+           None => {}
+       }
+        /*        target.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms,
+                            &Default::default()).unwrap();
+
+         */
+
+    }
 }
 
 
@@ -348,13 +366,13 @@ impl Lerper {
 
 
 #[derive(Copy, Clone)]
-struct TexturedVertex {
+pub struct TexturedVertex {
     position: [f32; 2],
     tex_coords: [f32; 2],
 }
 
 #[derive(Copy, Clone)]
-struct Vertex{
+pub struct Vertex{
     position: [f32; 2]
 }
 
@@ -362,33 +380,147 @@ struct Vertex{
 implement_vertex!(TexturedVertex, position, tex_coords);
 implement_vertex!(Vertex, position);
 
+
+
+
 pub struct TileRenderer<T:Copy> {
    pub vertex_buffer: glium::VertexBuffer<T>,
    pub program: glium::Program,
    pub indices: glium::index::NoIndices,
 }
 
-impl <T:Copy> TileRenderer<T> {
-    pub fn draw(&self, frame: &Frame, matrix: Mat4 ) {
+impl TileRenderer<Vertex> {
 
-/*        target.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms,
-                    &Default::default()).unwrap();
+    pub fn new(display: &Display)->Self {
+        let vertex1 = Vertex { position: [0.0, 0.0] };
+        let vertex2 = Vertex { position: [ 0.0,  1.0] };
+        let vertex3 = Vertex { position: [ 1.0, 0.0] };
+        let vertex4 = Vertex { position: [ 1.0, 1.0] };
+        let vertex5 = Vertex { position: [ 0.0,  1.0] };
+        let vertex6 = Vertex { position: [ 1.0, 0.0] };
 
- */
+        let shape = vec![vertex1, vertex2, vertex3, vertex4, vertex5, vertex6 ];
 
+        let vertex_buffer = glium::VertexBuffer::new(display, &shape).unwrap();
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+
+        let vertex_shader_src = r#"
+        #version 140
+        in vec2 position;
+        uniform mat4 matrix;
+        void main() {
+            gl_Position = matrix * vec4(position, 0.0, 1.0);
+        }
+    "#;
+
+        let fragment_shader_src = r#"
+        #version 140
+        out vec4 color;
+        uniform vec4 color_in;
+        void main() {
+            color = color_in;
+        }
+    "#;
+
+        let program = glium::Program::from_source(display, vertex_shader_src, fragment_shader_src, None).unwrap();
+
+        Self {
+            indices,
+            program,
+            vertex_buffer
+        }
+    }
+
+    pub fn draw(&self, frame: &mut Frame, matrix: Mat4, color: Vec4 ) {
+        let uniforms = uniform! {
+            matrix: [
+                [ matrix.x_axis.x , matrix.x_axis.y, matrix.x_axis.z, matrix.x_axis.w],
+                [ matrix.y_axis.x , matrix.y_axis.y, matrix.y_axis.z, matrix.y_axis.w],
+                [ matrix.z_axis.x , matrix.z_axis.y, matrix.z_axis.z, matrix.z_axis.w],
+                [ matrix.w_axis.x , matrix.w_axis.y, matrix.w_axis.z, matrix.w_axis.w],
+            ],
+            color_in: [color.x,color.y,color.z,color.w]
+        };
+        frame.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &Default::default()).unwrap();
+    }
+}
+
+impl TileRenderer<TexturedVertex> {
+
+    pub fn new(display: &Display)->Self {
+        let vertex1 = TexturedVertex { position: [0.0, 0.0], tex_coords: [0.0, 1.0] };
+        let vertex2 = TexturedVertex { position: [ 0.0,  1.0], tex_coords: [0.0, 0.0] };
+        let vertex3 = TexturedVertex { position: [ 1.0, 0.0], tex_coords: [1.0, 1.0] };
+        let vertex4 = TexturedVertex { position: [ 1.0, 1.0], tex_coords: [1.0, 0.0] };
+        let vertex5 = TexturedVertex { position: [ 0.0,  1.0], tex_coords: [0.0, 0.0] };
+        let vertex6 = TexturedVertex { position: [ 1.0, 0.0], tex_coords: [1.0, 1.0] };
+
+        let shape = vec![vertex1, vertex2, vertex3, vertex4, vertex5, vertex6 ];
+
+        let vertex_buffer = glium::VertexBuffer::new(display, &shape).unwrap();
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+
+        let vertex_shader_src = r#"
+        #version 140
+        in vec2 position;
+        in vec2 tex_coords;
+        out vec2 v_tex_coords;
+        uniform mat4 matrix;
+        void main() {
+            v_tex_coords = tex_coords;
+            gl_Position = matrix * vec4(position, 0.0, 1.0);
+        }
+    "#;
+
+        let fragment_shader_src = r#"
+        #version 140
+        in vec2 v_tex_coords;
+        out vec4 color;
+        uniform sampler2D tex;
+        void main() {
+            color = texture(tex, v_tex_coords);
+        }
+    "#;
+
+        let program = glium::Program::from_source(display, vertex_shader_src, fragment_shader_src, None).unwrap();
+
+        Self {
+            indices,
+            program,
+            vertex_buffer
+        }
+    }
+
+
+    pub fn draw(&self, frame: &mut Frame, matrix: Mat4, texture: &glium::texture::SrgbTexture2d) {
+        let uniforms = uniform! {
+            matrix: [
+
+                [ matrix.x_axis.x , matrix.x_axis.y, matrix.x_axis.z, matrix.x_axis.w],
+                [ matrix.y_axis.x , matrix.y_axis.y, matrix.y_axis.z, matrix.y_axis.w],
+                [ matrix.z_axis.x , matrix.z_axis.y, matrix.z_axis.z, matrix.z_axis.w],
+                [ matrix.w_axis.x , matrix.w_axis.y, matrix.w_axis.z, matrix.w_axis.w],
+            ],
+            tex: texture,
+        };
+        frame.draw(&self.vertex_buffer, &self.indices, &self.program, &uniforms, &Default::default()).unwrap();
     }
 }
 
 pub struct Context {
     pub data: Arc<Data>,
     pub texture_cache: DashMap<String,glium::texture::SrgbTexture2d>,
+    pub texture_tile_renderer: TileRenderer<TexturedVertex>,
+    pub color_tile_renderer: TileRenderer<Vertex>,
 }
 
 impl Context {
-    pub async fn new()->Self {
+    pub async fn new(texture_tile_renderer: TileRenderer<TexturedVertex>,color_tile_renderer: TileRenderer<Vertex>,)->Self {
         Self {
             data: Arc::new(Data::new()),
             texture_cache: DashMap::new(),
+            texture_tile_renderer,
+            color_tile_renderer
         }
     }
 }
