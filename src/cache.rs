@@ -4,19 +4,18 @@ use anyhow::Error;
 use std::sync::Arc;
 use std::collections::HashMap;
 use glium::texture::SrgbTexture2d;
-use crate::data::Data;
+use crate::data::{Data, Set};
 use glium::glutin::event_loop::EventLoopProxy;
-use crate::Call;
+use crate::{Call, Context};
 use bytes::Bytes;
 
-pub async fn cache_it_all( data: Data, proxy: EventLoopProxy<Call> ){
-    let urls :Vec<String> = data.sets.iter().flat_map(|set| set.items.iter() ).map( |item| item.image_url.clone() ).collect();
-    let tx = create_cacher(proxy).await;
+pub fn cache_set(set: Set, cacher: mpsc::Sender<String>){
+    let urls :Vec<String> = set.items.iter().map( |item| item.image_url.clone() ).collect();
     for url in urls {
         // here we rely on our large queue size to prevent an overflow...
         // if I had more time I would create a way to signal the UX that the cacher was overwellmed,
         // instead of just 'dropping' these images
-        tx.try_send(url).unwrap_or_default();
+        cacher.try_send(url).unwrap_or_default();
     }
 }
 
