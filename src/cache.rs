@@ -1,13 +1,16 @@
-use tokio::sync::{mpsc, RwLock, RwLockReadGuard};
-use std::io::Cursor;
-use anyhow::Error;
-use std::sync::Arc;
 use std::collections::HashMap;
-use glium::texture::SrgbTexture2d;
-use crate::data::{Data, Set};
-use glium::glutin::event_loop::EventLoopProxy;
-use crate::{Call, Context};
+use std::io::Cursor;
+use std::sync::Arc;
+
+use anyhow::Error;
 use bytes::Bytes;
+use glium::glutin::event_loop::EventLoopProxy;
+use glium::texture::SrgbTexture2d;
+use tokio::sync::{mpsc, RwLock, RwLockReadGuard};
+
+use crate::Call;
+use crate::data::{Data, Set};
+use crate::ux::Renderers;
 
 pub fn cache_set(set: Set, cacher: mpsc::Sender<String>){
     let urls :Vec<String> = set.items.iter().map( |item| item.image_url.clone() ).collect();
@@ -27,7 +30,7 @@ pub async fn create_cacher(proxy: EventLoopProxy<Call>) -> mpsc::Sender<String> 
     let (tx,mut rx) :(mpsc::Sender<String>,mpsc::Receiver<String>)= mpsc::channel(16*1024);
     tokio::spawn( async move {
        while let Option::Some(url) = rx.recv().await {
-           match fetch(url.clone() ).await {
+           match fetch_image(url.clone() ).await {
                Ok(bytes) => {
                    proxy.send_event(Call::ToTexture {url,bytes} );
                }
@@ -39,7 +42,7 @@ pub async fn create_cacher(proxy: EventLoopProxy<Call>) -> mpsc::Sender<String> 
     tx
 }
 
-async fn fetch(url: String ) -> Result<Bytes,Error> {
+async fn fetch_image(url: String ) -> Result<Bytes,Error> {
     let response = reqwest::get(url.clone()).await?;
     Ok(response.bytes().await?)
 }
