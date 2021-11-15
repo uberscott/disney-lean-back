@@ -7,7 +7,7 @@ I call this project the 'Lean Back Experience' because that is what Google terms
 Checkout the github like so:
 
 ```bash 
-git clone git@github.com:uberscott/disney-lean-back.git
+git clone https://github.com/uberscott/disney-lean-back.git
 ```
 
 Make sure cargo is installed because this project is written in RUST!
@@ -44,7 +44,7 @@ A few things went wrong for me during this project.  Although I have made client
 
 Also, I made some choices in my implementations that I would never make for production ready code simply in order to create something worthy of a review within a reasonable time.  In particular scheduling conflicts caused me to delay getting started on the project for a few days and upcomming scheduling conflicts motivated me to simplify things as I was worried if I took a break in the pursuance of this test to handle other obligations it might never get done or be delayed to such a degree that it would reflect poorly on me.  I ended up spending 4 full days programming this project.
 
-## IMAGE FETCHING & CACHING
+## IMAGE FETCHING & CACHING RATIONALE
 A proper image fetching & caching implementation should:
 * of course the basics it must download image data and provide an image instance to the application when it's ready
 * be aware of which images are presently 'needed' to render the UI and prioritize the availability of those images
@@ -61,5 +61,15 @@ My implentation:
 * the data fetch mechanism enqueues the fetch request in the order they are encountered in the json document
 * images are immediately turned into openGL textures (they cannot be evicted... luckily there was enough buffer space on my GPU to handle all the images.)
 
-Since the image cache has no concept of 
+Since my image cache provides no mechanism for the UX to express what it needs it causes a somewhat chaotic (and slower) loading experience.
+
+My reason for such a basic implementation was simply staying within the time contstraints of the assignment as I think the 'proper' image cache i described would take one or two weeks alone to implement. 
+
+## NAVIGATION RATIONALE
+Yes, the navigation is unusual.  I explained earlier that it works to keep the selected tile always in the upper left corner by moving the grid or rows.  The reason I took this approach was to avoid a whole class of potential bugs.  
+
+So the potential bugs I feared are from experience trying to determine if geometry is within the view frustrum and if it isn't then in what WAY is it outside of the frustrum in order to determine what action needs to be taken to get it back inside the frustrum.  For example: if the last visible tile in a row is selected and the user pushes the RIGHT key, the selected tile will now be beyond the right edge of the frustrum and therefore the appropriate action would be to lerp the row's X offset by a value that would make the newly selected entirely visible and with a small margin... however this gets exceptionly complicated particularly when you encounter tiles that are straddling the frustrum edge.
+
+My feeling was that a rushed implementation of the desired navigation I described would have resulted in visible bugs during the presentation.:
+
 
