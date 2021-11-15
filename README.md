@@ -14,17 +14,11 @@ Make sure cargo is installed because this project is written in RUST!
 
 [INSTALL RUST & CARGO](https://doc.rust-lang.org/cargo/getting-started/installation.html)
 
-### INSTALL
+### RUN 
 On the command line change to the directory where you checked out the github repository and run this command:
 
 ```bash 
-cargo install --path .
-```
-
-### RUNNING LEAN BACK
-From the command line run this command:
-```bash
-lean-back
+cargo run
 ```
 
 A Window should popup.  It might remain blue for a while then tiles will begin to appear.  If the window doesn't show, ask yourself if you have been good your whole life and if you are truly worthy of a quality lean back experience before pointing the finger at any developers that may or may not have messed up.
@@ -34,16 +28,17 @@ You can 'do stuff' using one of the many enumerated keys on the keyboard:
 * **Up** - move up
 * **Down** - move down
 * **Left** - move left
-* **Right** - move right 
-* **Escape** - Press this when you have grown sick of the lean back experience and you would like it to go away.
+* **Right** - move right (gosh, this is starting to seem rather strait-forward at this point...)
+* **Escape** - Press this when you have grown sick of the lean back experience and you would like it to go away
 
 You may notice the navigation is implemented in a strange way.  The SELECTED tile is always positioned in the upper left corner of the screen and when the selection changes either the grid or the row scroll to move the newly selected tile into that position.  It works, but it's not as good as the common user experience where the grid & rows only scroll when the selection is changed to something out of the viewport.  I will explain why I chose to implement the navigation this way later in this document.
 
 ## EXPLANATIONS & RATIONALES
-### HOW THE PROJECT WENT FOR ME
-A few things went wrong for me during this project.  Although I have made client side and openGL applications before and I have made RUST applications before--this was my first time making a client side application in RUST.  That means I had to select openGL & matrix algebra libs I hadn't used before and I ran into some problems with the libraries I selected which caused the need for some rewrites.
+### DEVELOPMENT TIME
+I spent 4 days on this project. Four days was probably more time than what was intended by the assignment, however, I wanted to submit a strong showing for this opportunity that I am rather excited about.
 
-Also, I made some choices in my implementations that I would never make for production ready code simply in order to create something worthy of a review within a reasonable time.  In particular scheduling conflicts caused me to delay getting started on the project for a few days and upcoming scheduling conflicts motivated me to simplify things as I was worried if I took a break in the pursuance of this test to handle other obligations it might never get done or be delayed to such a degree that it would reflect poorly on me.  I ended up spending 4 full days programming this project.
+### CHALLENGES
+I have written openGL applications in Java and I server side applications in Rust, however, this is the first time I have written an openGL application in Rust and I didn't have my 'go to' libraries chosen for openGL and matrix algebra at the ready which resulting in some stumbling as I tried multiple libraries to get the results I wanted. 
 
 ### IMAGE FETCHING & CACHING RATIONALE
 A proper image fetching & caching implementation should:
@@ -64,7 +59,7 @@ My implementation:
 
 Since my image cache provides no mechanism for the UX to express what it needs it causes a somewhat chaotic (and slower) loading experience.
 
-My reason for such a basic implementation was simply staying within the time constraints of the assignment as I think the 'proper' image cache i described would take one or two weeks alone to implement. 
+My reason for such a basic implementation was simply staying within the time constraints of the assignment as I think the 'proper' image cache I described would take one or two weeks alone to implement. 
 
 ### NAVIGATION RATIONALE
 Yes, the navigation is unusual.  I explained earlier that it works to keep the selected tile always in the upper left corner by moving the grid or rows.  The reason I took this approach was to avoid a whole class of potential bugs.  
@@ -73,10 +68,10 @@ So the potential bugs I feared are from experience trying to determine if geomet
 
 My feeling was that a rushed implementation of the desired navigation I described would have resulted in visible bugs during the presentation creating a more frustrating experience than the solution I ultimately supplied.
 
-If I was working on this project in a production capacity I would simply take the time to iron out all the bugs for the technique that provided the best user experience.
+If I was working on this project in a production capacity I would take the time to iron out all the bugs for the technique that provided the best user experience.
 
 ### MISSING FEATURE - SET TITLES
-One of the requirements in the doc was to have TITLES for the sets (they are called 'sets' in the json and rendered as Rows in the UX.)
+This requirement was not explicitly written out but seems implied by an image supplied in the assignment which is: to have TITLES for the sets (they are called 'sets' in the json and rendered as Rows in the UX.)
 
 When I began this project I started with one opengl crate which I couldn't get working, then move to a crate called 'glium.'  During the process of working with glium I discovered that the maintainer discontinued the glium project, but everything was working so I kept going...
 
