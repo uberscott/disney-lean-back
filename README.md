@@ -47,7 +47,7 @@ A proper image fetching & caching implementation should:
 * be able to handle rapid and frequent changes in the priority of those images.  The UX may be changing rapidly such as in the case of when a user scrolls past hundreds of rows rapidly and the images in each of those rows are momentarily desired and therefore enqueued for caching which is problematic as the cache may bog down in performance handling now unneeded images all while fresh hotly needed images are waiting at the start of the queue.  
 * save all images to the disk 
 * be able to evict unused images from memory based on an LRU cache in order to prevent running out of memory due to too many images
-* be smart enough to know if an image is available on the disk do to previous caching and avoid making expensive network calls 
+* be smart enough to know if an image is available on the disk due to previous caching and avoid making expensive network calls 
 * have a mechanism for 'expressing' image status to the UX, which means if an image is Ready, Not Ready or UnCacheable (due to being a bad link, or corrupted image or what have you)
 
 To get this effect I spent some time searching for 3rd party image caching rust crates, but wasn't able to find anything satisfactory so I had to write my own.
