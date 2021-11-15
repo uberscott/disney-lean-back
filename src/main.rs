@@ -1,28 +1,28 @@
 use std::collections::HashMap;
 use std::io::Cursor;
-use std::ops::Neg;
+
 use std::sync::Arc;
 
 use anyhow::Error;
 use bytes::Bytes;
-use glam::{Affine2, Affine3A, Mat4, Vec2, Vec3, Vec4};
-use glium::{Display, Frame, Surface};
+use glam::{Mat4};
+use glium::{Surface};
 use glium::backend::glutin::glutin::dpi::{PhysicalSize, Size};
 use glium::backend::glutin::glutin::event::VirtualKeyCode;
-use glium::backend::glutin::glutin::event_loop::EventLoopProxy;
+
 use glium::backend::glutin::glutin::platform::macos::WindowBuilderExtMacOS;
 use glium::glutin::event_loop::EventLoop;
 use glium::glutin::window::WindowBuilder;
-use image::imageops::tile;
-use nalgebra::{Matrix4, MatrixSlice4};
-use nalgebra_glm::make_mat4x4;
-use tokio::sync::mpsc;
-use tokio::time::{Duration, Instant};
 
-use ux::{Renderers, Grid, Lerper, TexturedVertex, TileRenderer, Vertex};
+use nalgebra::{Matrix4};
 
-use crate::cache::{cache_set, create_cacher};
-use crate::data::{Data, Item, Set};
+
+
+
+use ux::{Renderers, Grid, TexturedVertex, TileRenderer, Vertex};
+
+
+use crate::data::{Set};
 
 pub mod data;
 pub mod cache;
@@ -68,7 +68,7 @@ async fn main() {
                     match input.virtual_keycode {
                         None => {}
                         Some(key) => {
-                            let vert_nudge = 1.0;
+                            let _vert_nudge = 1.0;
                             match key {
                                 VirtualKeyCode::Escape=> {
                                     *control_flow = glium::glutin::event_loop::ControlFlow::Exit;
@@ -125,7 +125,7 @@ println!("Init!");
 
                     match to_texture(bytes,url.clone(), &display, & mut texture_cache ) {
                         Ok(_) => {
-                            println!("ToTexture: {}", url);
+                            println!("Cached: {}", url);
                             return;
                         }
                         Err(error) => {
@@ -156,7 +156,7 @@ println!("Init!");
         let (width, height) = frame.get_dimensions();
         let aspect_ratio = height as f32 / width as f32;
 
-        let mut aspect_matrix = Mat4::from_cols_array_2d(&[
+        let aspect_matrix = Mat4::from_cols_array_2d(&[
             [aspect_ratio, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],

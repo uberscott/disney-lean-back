@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-use std::io::Cursor;
-use std::sync::Arc;
+
+
+
 
 use anyhow::Error;
 use bytes::Bytes;
 use glium::glutin::event_loop::EventLoopProxy;
-use glium::texture::SrgbTexture2d;
-use tokio::sync::{mpsc, RwLock, RwLockReadGuard};
+
+use tokio::sync::{mpsc};
 
 use crate::Call;
-use crate::data::{Data, Set};
-use crate::ux::Renderers;
+use crate::data::{Set};
+
 
 pub fn cache_set(set: Set, cacher: mpsc::Sender<String>){
     let urls :Vec<String> = set.items.iter().map( |item| item.image_url.clone() ).collect();
@@ -34,7 +34,7 @@ pub async fn create_cacher(proxy: EventLoopProxy<Call>) -> mpsc::Sender<String> 
                Ok(bytes) => {
                    proxy.send_event(Call::ToTexture {url,bytes} );
                }
-               Err(error) => eprintln!("encountered an error when attempting to cache texture url: {}", url)
+               Err(_error) => eprintln!("encountered an error when attempting to cache texture url: {}", url)
            }
        }
        proxy.send_event(Call::TextureCachingBatchComplete);
