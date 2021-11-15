@@ -1,5 +1,5 @@
 # THE LEAN BACK EXPERIENCE 
-This project is a proof of concept.  Specifically I am trying to prove a concept I have to a potential employer that I am competent enough to join the team because no one wants another layabout slugabed that collects a paychecks and produces mediocre code that other devs have to fix--that's bad for morale! 
+This project is a proof of concept.  Specifically I am trying to prove a concept I have to a potential employer that I am competent enough to join the team because no one wants another layabout slugabed that collects paychecks and produces mediocre code that other devs have to fix--that's bad for morale! 
 
 I call this project the 'Lean Back Experience' because that is what Google terms this kind of screen on Android TV... formerly known as GoogleTV and now recently changed back to being called GoogleTV after being AndroidTV for so long.
 
@@ -27,7 +27,7 @@ From the command line run this command:
 lean-back
 ```
 
-A Window should popup.  It might remain blue for a while then tiles will begin to appear.  If the window doesn't show ask yourself if you have been good your whole live and if you are truly worthy of a quality lean back experience before pointing the finger at any developers that may or may not have messed up.
+A Window should popup.  It might remain blue for a while then tiles will begin to appear.  If the window doesn't show ask yourself if you have been good your whole life and if you are truly worthy of a quality lean back experience before pointing the finger at any developers that may or may not have messed up.
 
 ### USING THE APP
 You can 'do stuff' using one of the many enumerated keys on the keyboard:
