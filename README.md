@@ -70,6 +70,40 @@ Yes, the navigation is unusual.  I explained earlier that it works to keep the s
 
 So the potential bugs I feared are from experience trying to determine if geometry is within the view frustrum and if it isn't then in what WAY is it outside of the frustrum in order to determine what action needs to be taken to get it back inside the frustrum.  For example: if the last visible tile in a row is selected and the user pushes the RIGHT key, the selected tile will now be beyond the right edge of the frustrum and therefore the appropriate action would be to lerp the row's X offset by a value that would make the newly selected entirely visible and with a small margin... however this gets exceptionly complicated particularly when you encounter tiles that are straddling the frustrum edge.
 
-My feeling was that a rushed implementation of the desired navigation I described would have resulted in visible bugs during the presentation.:
+My feeling was that a rushed implementation of the desired navigation I described would have resulted in visible bugs during the presentation creating a more frustrating experience than the solution I ultimately supplied.
+
+If I was working on this project in a production capacity I would simply take the time to iron out all the bugs for the technique that provided the best user experience.
+
+## MISSING FEATURE - SET TITLES
+One of the requirements in the doc was to have TITLES for the sets (they are called 'sets' in the json and rendered as Rows in the UX.)
+
+When I began this project I started with one opengl crate which I couldn't get working, then move to a crate called 'glium.'  During the process of working with glium I discovered that the maintainer discontinued the glium project, but everything was working so I kept going...
+
+After getting the image tiles working I moved on to rendering Text using a different crate called 'glium-text.'  I basically found out that glium-text did not support the latest version of 'glium' as it had also been abandonned.  I downgraded glium to a glium-text friendly version and had to heavily refactor my code to support the older library AND after that discovered that older version of glium does not work on the latest version of my OS (or probably any updated OS.)  I rolled back my changes to the latest glium library which basically doesn't support Text anymore.
+
+At that point I took a break trying to decide what to do and determined that in order to implement this feature I would have to select yet another openGL library and rewrite a large portion of the archetecture. 
+
+Given my time constraints I decided to leave the SET TITLES feature out.
+
+## MISSING FEATURE -- CHOOSE TITLE
+Another requirement that was not met was the ability to 'zoom' in on a tile... or choose it.  I was going to write the code to press 'space' bar and make the selected tile scale to fullscreen, but I just ran out of time for this feature and determined my remaining efforts would be better spent cleaning up the code, fixing all the compile warnings and writing this README document.
+
+## SOME MORE COOLNESS I WOULD HAVE LIKED TO ADD
+A few more important things not necessarily mentioned in the requirements document but importat to me included: Ease In/Out Interpolation for transitions, a loading screen to be shown while the data is being fetched (instead of a blank blue screen), fade transitions on tiles when an image goes from uncached to cached
+
+## ADDING MAGIC
+Also the requirements document mentioned sprinkling in some 'magic.'  Well, wasn't able to get to the Magic part but I had some ideas I wanted to share with you:
+
+* *Lean Back from an Alternative Distopian Reality where Russia Won the Cold War*.  This would have included lots of propaganda messages like "Choose a new program to begin binge watching in the next 24 hours or face reprogramming from the bureau of streaming."  
+* *Creepy Mode* strange music would play in the background and every so often a creeply clown would peer from behind one of the tiles then dart back into hiding as if he was up to something
+* *Unsafe Mode* the idea here was that the entire program would run 25% faster, but there would be warnings that rapidly moving tiles could in some rare cases be ejected from the TV set and do potential harm to the viewer (as the tiles are quite sharp)
+* *OMG FIRE THIS DEVELOPER IMMEDIATELY MODE* In this mode tiles would have different personalities.  Some would spin back and forth like they were mentally addled, others would be lazy and not move into their positions at the same speed, still other tiles would bully there neighbors pushing them around and scaling up large (even when they weren't the selected tile).  It did occur to me that creating OMG FIRE THIS DEVELOPER IMMEDIATELY MODE may not be a good idea to include in a project where I was actually trying to get hired, so I guess it's just as well that I ran out of time for this one.
+* *Bad Advice Mode* While the user is watching TV a ticker tape of random messages appears, always giving advice that if the viewer follows might actually cause him harm.  Examples:
+  - "If you see a boa constrictor sleeping in nature, and you lie down next to it, when it wakes it will become tame and ever loyal to you"
+  - "To prevent a polar bear attack point your forearm vertically and shove it directly towards the polar bears face.  The polar bear won't be able to open his jaw wide enough to grab hold of your forearm and they are incapable of rotating their heads... be prepared to 'dance' with the polar bear for about an hour as he tries to eat you, but rest assured he will get tired eventually and move on to bigger and better things."
+  - "Native Americans discovered that one can gain immunity to poison ivy by dipping a wad of poison ivy leaves in mayonaise and swallowing it whole.  The scienfic explaination is that the mayonaise protected the body from the poison as it was being consumed and once it was digested the body's 'poison receptors' would forever more recognize the toxins as the same that were coming from inside the body and therefore there would be no reaction.  Also: Native Americans invented Mayaonaise."
+
+
+
 
 
