@@ -31,11 +31,11 @@ A Window should popup.  It might remain blue for a while then tiles will begin t
 
 ### USING THE APP
 You can 'do stuff' using one of the many enumerated keys on the keyboard:
-* *Up* - move up
-* *Down* - move down
-* *Left* - move left
-* *Right* - move right 
-* *Escape* - Press this when you have grown sick of the lean back experience and you would like it to go away.
+* **Up** - move up
+* **Down** - move down
+* **Left** - move left
+* **Right** - move right 
+* **Escape** - Press this when you have grown sick of the lean back experience and you would like it to go away.
 
 You may notice the navigation is implemented in a strange way.  The SELECTED tile is always positioned in the upper left corner of the screen and when the selection changes either the grid or the row scroll to move the newly selected tile into that position.  It works, but it's not as good as the common user experience where the grid & rows only scroll when the selection is changed to something out of the viewport.  I will explain why I chose to implement the navigation this way later in this document.
 
@@ -96,13 +96,13 @@ A few more important things not necessarily mentioned in the requirements docume
 ### ADDING MAGIC
 Also the requirements document mentioned sprinkling in some 'magic.'  Well, wasn't able to get to the Magic part but I had some ideas I wanted to share with you:
 
-* *Lean Back from an Alternative Dystopian Reality where Russia Won the Cold War*.  This would have included lots of propaganda messages like "Choose a new program to begin binge watching in the next 24 hours or face reprogramming from the bureau of streaming."  
-* *Creepy Mode* strange music would play in the background and every so often a creepy clown would peer from behind one of the tiles then dart back into hiding as if he was up to something
-* *Unsafe Mode* the idea here was that the entire program would run 25% faster, but there would be warnings that rapidly moving tiles could in some rare cases be ejected from the TV set and do potential harm to the viewer (as the tiles are quite sharp)
-* *OMG FIRE THIS DEVELOPER IMMEDIATELY MODE* In this mode tiles would have different personalities.  Some would spin back and forth like they were mentally addled, others would be lazy and not move into their positions at the same speed, still other tiles would bully their neighbors pushing them around and scaling up large (even when they weren't the selected tile).  It did occur to me that creating OMG FIRE THIS DEVELOPER IMMEDIATELY MODE may not be a good idea to include in a project where I was actually trying to get hired, so I guess it's just as well that I ran out of time for this one.
-* *Fake Badgification Mode* This would give the viewer fake badges for things they didn't really do.  Example Badge: *"As a thanks for watching so much TV we have decided to increase your happiness quota by 5% next month.  Have fun with all the extra happiness!"*
+* **Lean Back from an Alternative Dystopian Reality where Russia Won the Cold War**.  This would have included lots of propaganda messages like "Choose a new program to begin binge watching in the next 24 hours or face reprogramming from the bureau of streaming."  
+* **Creepy Mode** strange music would play in the background and every so often a creepy clown would peer from behind one of the tiles then dart back into hiding as if he was up to something
+* **Unsafe Mode** the idea here was that the entire program would run 25% faster, but there would be warnings that rapidly moving tiles could in some rare cases be ejected from the TV set and do potential harm to the viewer (as the tiles are quite sharp)
+* **OMG FIRE THIS DEVELOPER IMMEDIATELY MODE** In this mode tiles would have different personalities.  Some would spin back and forth like they were mentally addled, others would be lazy and not move into their positions at the same speed, still other tiles would bully their neighbors pushing them around and scaling up large (even when they weren't the selected tile).  It did occur to me that creating OMG FIRE THIS DEVELOPER IMMEDIATELY MODE may not be a good idea to include in a project where I was actually trying to get hired, so I guess it's just as well that I ran out of time for this one.
+* **Fake Badgification Mode** This would give the viewer fake badges for things they didn't really do.  Example Badge: *"As a thanks for watching so much TV we have decided to increase your happiness quota by 5% next month.  Have fun with all the extra happiness!"*
 
-* *Bad Advice Mode* While the user is watching TV a ticker tape of random messages appears, always giving advice that if the viewer follows might actually cause him harm.  Examples:
+* **Bad Advice Mode** While the user is watching TV a ticker tape of random messages appears, always giving advice that if the viewer follows might actually cause him harm.  Examples:
   - "If you see a boa constrictor sleeping in nature, and you lie down next to it, when it wakes it will become tame and ever loyal to you"
   - "To prevent a polar bear attack, point your forearm vertically and shove it directly towards the polar bear's face.  The polar bear won't be able to open his jaw wide enough to grab hold of your forearm and they are incapable of rotating their heads... be prepared to 'dance' with the polar bear for about an hour as he tries to eat you, but rest assured he will get tired eventually and move on to bigger and better things."
   - "Native Americans discovered that one can gain immunity to poison ivy by dipping a wad of poison ivy leaves in mayonnaise and swallowing it whole.  The scientific explanation is that the mayonnaise protected the body from the poison as it was being consumed and once it was digested the body's 'poison receptors' would forever more recognize the toxins as the same that were coming from inside the body and therefore there would be no reaction.  Also: Native Americans invented Mayonnaise."
