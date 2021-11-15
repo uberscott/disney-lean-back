@@ -96,10 +96,10 @@ A few more important things not necessarily mentioned in the requirements docume
 ### ADDING MAGIC
 Also the requirements document mentioned sprinkling in some 'magic.'  Well, wasn't able to get to the Magic part but I had some ideas I wanted to share with you:
 
-* **Lean Back from an Alternative Dystopian Reality where Russia Won the Cold War**.  This would have included lots of propaganda messages like "Choose a new program to begin binge watching in the next 24 hours or face reprogramming from the bureau of streaming."  
-* **Creepy Mode** strange music would play in the background and every so often a creepy clown would peer from behind one of the tiles then dart back into hiding as if he was up to something
-* **Unsafe Mode** the idea here was that the entire program would run 25% faster, but there would be warnings that rapidly moving tiles could in some rare cases be ejected from the TV set and do potential harm to the viewer (as the tiles are quite sharp)
-* **OMG FIRE THIS DEVELOPER IMMEDIATELY MODE!** In this mode tiles would have different personalities.  Some would spin back and forth like they were mentally addled, others would be lazy and not move into their positions at the same speed, still other tiles would bully their neighbors pushing them around and scaling up large (even when they weren't the selected tile).  It did occur to me that creating OMG FIRE THIS DEVELOPER IMMEDIATELY MODE may not be a good idea to include in a project where I was actually trying to get hired, so I guess it's just as well that I ran out of time for this one.
+* **Lean Back from an Alternative Dystopian Reality where Russia Won the Cold War**.  This would have included lots of propaganda messages like "Comrade, You must begin binge watching a new show in the next 24 hours or report for reprogramming from the bureau of streaming."  
+* **Creepy Mode** strange music would play in the background and every so often a clown would peer from behind one of the tiles then dart back into hiding as if he was up to something
+* **Unsafe Mode** the idea here was that the entire program would run 25% faster but there would be warnings that rapidly moving tiles could in some rare cases be ejected from the TV set and do potential harm to the viewer (as the tiles are quite sharp)
+* **OMG FIRE THIS DEVELOPER IMMEDIATELY MODE!** In this mode tiles would have different personalities.  Some would spin back and forth like they were mentally addled, others would be lazy and not move into their positions at the same speed, still other tiles would bully their neighbors pushing them around and scaling up large (even when they weren't the selected tile).  It did occur to me that creating OMG FIRE THIS DEVELOPER IMMEDIATELY MODE may not be a good idea to include in a project where I was actually trying to get hired, as the mode's primary objective is to drive management crazy with range--and obviously those are the people that I want to like me... so for this one I guess it worked out that I ran out of time before getting to it.
 * **Fake Badgification Mode** This would give the viewer fake badges for things they didn't really do.  Example Badge: *"As a thanks for watching so much TV we have decided to give you 5% **ADDITIONAL** happiness next month.  Have fun with all the extra happiness!"*
 
 * **Bad Advice Mode** While the user is watching TV a ticker tape of random messages appears, always giving advice that if the viewer follows might actually cause him harm.  Examples:
@@ -107,8 +107,11 @@ Also the requirements document mentioned sprinkling in some 'magic.'  Well, wasn
   - "To prevent a polar bear attack, point your forearm vertically and shove it directly towards the polar bear's face.  The polar bear won't be able to open his jaw wide enough to grab hold of your forearm and they are incapable of rotating their heads... be prepared to 'dance' with the polar bear for about an hour as he tries to eat you, but rest assured he will get tired eventually and move on to bigger and better things."
   - "Native Americans discovered that one can gain immunity to poison ivy by dipping a wad of poison ivy leaves in mayonnaise and swallowing it whole.  The scientific explanation is that the mayonnaise protected the body from the poison as it was being consumed and once it was digested the body's 'poison receptors' would forever more recognize the toxins as the same that were coming from inside the body and therefore there would be no reaction.  Also: Native Americans invented Mayonnaise."
 
-Actually upon review the document asked specifically for 'Disney magic' and the magic I was offering might not fit so well with the Disney brand, but hey, that's just another reason to keep Rust developers as far away from marketing as possible.
+Actually upon review the document asked specifically for 'Disney magic' and the magic I was offering might not fit exactly with the brand, but hey, that's just another reason to keep Rust developers as far away from marketing as possible.
 
 ## SUMMARY
 Well, I'm grateful for the opportunity to show you what I got.  I hope someone reading this will deem me worthy of joining the team and we can get to creating some really cool experiences together.
 
+Thank You!
+
+--Scott
